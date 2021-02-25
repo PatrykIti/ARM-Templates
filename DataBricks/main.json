@@ -1,0 +1,75 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+        "environmentName": {
+            "type": "string",
+            "defaultValue": "dev"
+        },
+        "locationAcronym": {
+            "type": "string",
+            "defaultValue": "eun"
+		},
+		"databricksSku": {
+            "type": "string",
+            "defaultValue": "Standard"
+        },
+		"apiVersion": {
+			"type": "string",
+			"defaultValue": "2018-04-01"
+		}
+	},
+	"variables": {
+        "resourceName": "br",
+        "resourceType": "mgmt",
+        "subscriptionId": "[subscription().subscriptionId]",
+		"subscriptionInfix": "[substring(variables('subscriptionId'), 0, 5)]",
+		"namePrefix": "[toLower(concat(parameters('environmentName'), parameters('locationAcronym'), variables('subscriptionInfix')))]",
+
+		"workspaceName" : "[toLower(concat(variables('namePrefix'), '-', variables('resourceName')))]",
+
+		"managedResourceGroupName": "[toLower(concat(variables('namePrefix'), '-' , variables('resourceName'), '-', variables('resourceType') ))]",
+		"managedResourceGroupId": "[concat(subscription().id, '/resourceGroups/', variables('managedResourceGroupName'))]",
+		"tableauGroupName": "[concat(variables('namePrefix'), '-test2')]",
+		"tableauVirtualNetworkName": "[concat(variables('tableauGroupName'), '-vn')]",
+		"peeringName": "[toLower(concat(variables('namePrefix'), '_', variables('resourceName'), '_to_', variables('namePrefix'), '_test2'))]"
+
+	},
+	"resources": [
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Databricks/workspaces",
+			"location": "[resourceGroup().location]",
+			"name": "[variables('workspaceName')]",
+			"sku": {
+				"name": "[parameters('databricksSku')]"
+			},
+			"comments": "This resource is only for testing purpose",
+			"properties": {
+				"ManagedResourceGroupId": "[variables('managedResourceGroupId')]"
+			},
+			"resources": [
+				{
+					"name": "[concat(variables('workspaceName'), '/', variables('peeringName'))]",
+					"type": "Microsoft.Databricks/workspaces/virtualNetworkPeerings",
+					"apiVersion": "[parameters('apiVersion')]",
+					"dependsOn": [
+						"[concat('Microsoft.Databricks/workspaces/', variables('workspaceName'))]"
+					],
+					"properties": {
+						"allowVirtualNetworkAccess": "true",
+						"allowForwardedTraffic": "true",
+						"allowGatewayTransit": "false",
+						"useRemoteGateways": "false",
+						"databricksVirtualNetwork": {
+							"id": "[resourceId(variables('subscriptionId'), variables('managedResourceGroupName'), 'Microsoft.Network/virtualNetworks', 'workers-vnet')]"
+						},
+						"remoteVirtualNetwork": {
+							"id": "[resourceId(variables('subscriptionId'), variables('tableauGroupName'), 'Microsoft.Network/virtualNetworks', variables('tableauVirtualNetworkName'))]"
+						}
+					}
+				}
+			]
+		}
+	]
+}
