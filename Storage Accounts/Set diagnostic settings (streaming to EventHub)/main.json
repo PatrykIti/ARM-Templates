@@ -1,0 +1,78 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "storageName": {
+            "type": "string"
+        }
+    },
+    "resources": [
+        {
+            "apiVersion": "2017-06-01",
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[parameters('storageName')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard_LRS"
+            },
+            "kind": "Storage",
+            "properties": {
+            },
+            "resources": [
+                {
+                    "type": "Microsoft.Storage/storageAccounts/blobServices/providers/diagnosticsettings",
+                    "apiVersion": "2017-05-01-preview",
+                    "name": "[concat(parameters('storageName'),'/default/Microsoft.Insights/service')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+                    ],
+                    "properties": {
+                        "eventHubAuthorizationRuleId": "/subscriptions/94db5259-bb2e-4451-8504-bf7d3d72a89a/resourceGroups/dev01eun14cb4-pl1/providers/Microsoft.EventHub/namespaces/developmenteun94db5-pl-log-eventhubnamespace/AuthorizationRules/RootManageSharedAccessKey",
+                        "eventHubName": "eh-for-sta",
+                        "logs": [
+                            {
+                                "category": "StorageRead",
+                                "enabled": true
+                            },
+                            {
+                                "category": "StorageWrite",
+                                "enabled": true
+                            },
+                            {
+                                "category": "StorageDelete",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "Microsoft.Storage/storageAccounts/fileServices/providers/diagnosticsettings",
+                    "apiVersion": "2017-05-01-preview",
+                    "name": "[concat(parameters('storageName'),'/default/Microsoft.Insights/service1')]",
+                    "dependsOn": [
+                        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageName'))]"
+                    ],
+                    "properties": {
+                        "eventHubAuthorizationRuleId": "/subscriptions/94db5259-bb2e-4451-8504-bf7d3d72a89a/resourceGroups/dev01eun14cb4-pl1/providers/Microsoft.EventHub/namespaces/developmenteun94db5-pl-log-eventhubnamespace/AuthorizationRules/RootManageSharedAccessKey",
+                        "eventHubName": "eh-for-sta",
+                        "logs": [
+                            {
+                                "category": "StorageRead",
+                                "enabled": true
+                            },
+                            {
+                                "category": "StorageWrite",
+                                "enabled": true
+                            },
+                            {
+                                "category": "StorageDelete",
+                                "enabled": true
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ],
+    "outputs": {}
+}

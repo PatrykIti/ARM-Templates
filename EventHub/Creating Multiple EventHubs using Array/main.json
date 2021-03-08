@@ -1,0 +1,86 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "environmentName": {
+            "type": "string",
+            "defaultValue": "Development"
+        },
+        "EventHubTier": {
+            "type": "string",
+            "defaultValue": "Standard"
+        },
+        "EventHubUnits": {
+            "type": "string",
+            "defaultValue": "1"
+        },
+        "addTags": {
+            "type": "object",
+            "defaultValue": {}
+        },
+        "locationAcronym": {
+            "type": "string",
+            "defaultValue": "eun"
+        },
+        "ApiVersion": {
+            "type": "string",
+            "defaultValue": "2015-08-01"
+        },
+        "eventHubs": {
+            "type": "array",
+            "defaultValue": [
+                "eh-for-sql",
+                "eh-for-sta",
+                "eh-for-for"
+            ]
+        }
+    },
+    "variables": {
+        "solutionName": "pl",
+        "resourceName": "log",
+        "resourceType": "eventhubnamespace",
+        "subscriptionId": "[subscription().subscriptionId]",
+        "subscriptionInfix": "[substring(variables('subscriptionId'), 0, 5)]",
+        "namePrefix": "[toLower(concat(parameters('environmentName'), parameters('locationAcronym'), variables('subscriptionInfix')))]",
+        "EventHubName": "[concat(variables('namePrefix'), '-', variables('solutionName'), '-', variables('resourceName'), '-', variables('resourceType'))]",
+        "defaultTags": {
+            "environment": "[parameters('environmentName')]"
+        }
+    },
+    "resources": [
+        {
+            "type": "Microsoft.EventHub/namespaces",
+            "apiVersion": "[parameters('ApiVersion')]",
+            "name": "[variables('EventHubName')]",
+            "location": "[resourceGroup().location]",
+            "tags": "[union(parameters('addTags'), variables('defaultTags'))]",
+            "sku": {
+                "name": "[parameters('EventHubTier')]",
+                "tier": "[parameters('EventHubTier')]",
+                "capacity": "[parameters('EventHubUnits')]"
+            },
+            "properties": {
+                "isAutoInflateEnabled": "false",
+                "maximumThroughputUnits": "0",
+                "zoneRedundant": "false"
+            }
+        },
+        {
+            "type": "Microsoft.EventHub/namespaces/eventhubs",
+            "apiVersion": "[parameters('ApiVersion')]",
+            "name": "[concat(variables('EventHubName'), '/', parameters('eventHubs')[copyIndex()])]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', variables('EventHubName'))]"
+            ],
+            "properties": {
+                "messageRetentionInDays": 7,
+                "partitionCount": 1
+            },
+            "copy": {
+                "name": "eventhubcopy",
+                "count": "[length(parameters('eventHubs'))]"
+            }
+        }
+    ]
+}
