@@ -30,8 +30,7 @@
             "type": "array",
             "defaultValue": [
                 "eh-for-sql",
-                "eh-for-sta",
-                "eh-for-for"
+                "eh-for-sta"
             ]
         }
     },

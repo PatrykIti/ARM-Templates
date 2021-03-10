@@ -1,0 +1,157 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "serverName": {
+        "type": "string",
+        "defaultValue": "deveunsql01",
+        "metadata": {
+          "description": "The name of the SQL logical server."
+        }
+      },
+      "sqlDBName": {
+        "type": "string",
+        "defaultValue": "SampleDB",
+        "metadata": {
+          "description": "The name of the SQL Database."
+        }
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location for all resources."
+        }
+      },
+      "administratorLogin": {
+        "type": "string",
+        "defaultValue": "azureadmin",
+        "metadata": {
+          "description": "The administrator username of the SQL logical server."
+        }
+      },
+      "administratorLoginPassword": {
+        "type": "string",
+        "defaultValue": "adminadmin123!",
+        "metadata": {
+          "description": "The administrator password of the SQL logical server."
+        }
+      },
+      "eventHubAuthKey": {
+        "type": "string",
+        "defaultValue": "/subscriptions/94db5259-bb2e-4451-8504-bf7d3d72a89a/resourceGroups/dev01eun14cb4-pl1/providers/Microsoft.EventHub/namespaces/developmenteun94db5-pl-log-eventhubnamespace/AuthorizationRules/RootManageSharedAccessKey"
+      },
+      "eventHubName": {
+        "type": "string",
+        "defaultValue": "eh-for-sql"
+      }
+    },
+    "variables": {
+      "diagnosticSettingsName": "SQLSecurityAuditEvents"
+    },
+    "resources": [
+      {
+        "type": "Microsoft.Sql/servers",
+        "apiVersion": "2020-02-02-preview",
+        "name": "[parameters('serverName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "administratorLogin": "[parameters('administratorLogin')]",
+          "administratorLoginPassword": "[parameters('administratorLoginPassword')]"
+        },
+        "resources": [
+          {
+            "type": "databases",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[parameters('sqlDBName')]",
+            "location": "[parameters('location')]",
+            "sku": {
+              "name": "Standard",
+              "tier": "Standard"
+            },
+            "dependsOn": [
+              "[resourceId('Microsoft.Sql/servers', concat(parameters('serverName')))]"
+            ]
+          },
+          {
+            "type": "databases/providers/diagnosticSettings",
+            "name": "[concat('master/microsoft.insights/',variables('diagnosticSettingsName'))]",
+            "apiVersion": "2017-05-01-preview",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]",
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('serverName'), parameters('sqlDBName'))]"
+            ],
+            "properties": {
+              "storageAccountId": null,
+              "serviceBusRuleId": null,
+              "workspaceId": null,
+              "eventHubAuthorizationRuleId": "[parameters('eventHubAuthKey')]",
+              "eventHubName": "[parameters('eventHubName')]",
+              "logs": [
+                {
+                  "category": "DevOpsOperationsAudit",
+                  "enabled": false,
+                  "retentionPolicy": {
+                    "enabled": false,
+                    "days": 0
+                  }
+                },
+                {
+                  "category": "SQLSecurityAuditEvents",
+                  "enabled": true,
+                  "retentionPolicy": {
+                    "enabled": true,
+                    "days": 30
+                  }
+                }
+              ],
+              "logAnalyticsDestinationType": null
+            },
+            "identity": null
+          },
+          {
+            "type": "Microsoft.Sql/servers/auditingSettings",
+            "apiVersion": "2017-03-01-preview",
+            "name": "[concat(parameters('serverName'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]",
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('serverName'), parameters('sqlDBName'))]"
+            ],
+            "properties": {
+                "retentionDays": 30,
+                "auditActionsAndGroups": [
+                    "BATCH_COMPLETED_GROUP",
+                    "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+                    "FAILED_DATABASE_AUTHENTICATION_GROUP"
+                ],
+                "isAzureMonitorTargetEnabled": true,
+                "state": "Enabled",
+                "storageEndpoint": "",
+                "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          {
+            "type": "Microsoft.Sql/servers/extendedAuditingSettings",
+            "apiVersion": "2017-03-01-preview",
+            "name": "[concat(parameters('serverName'), '/Default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('serverName'))]",
+                "[resourceId('Microsoft.Sql/servers/databases', parameters('serverName'), parameters('sqlDBName'))]"
+            ],
+            "properties": {
+              "retentionDays": 30,
+              "auditActionsAndGroups": [
+                "SUCCESSFUL_DATABASE_AUTHENTICATION_GROUP",
+                "FAILED_DATABASE_AUTHENTICATION_GROUP",
+                "BATCH_COMPLETED_GROUP"
+              ],
+              "isAzureMonitorTargetEnabled": true,
+              "state": "Enabled",
+              "storageEndpoint": "",
+              "storageAccountSubscriptionId": "00000000-0000-0000-0000-000000000000"
+            }
+          }
+        ]
+      }
+    ]
+  }
